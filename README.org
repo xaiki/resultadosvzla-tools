@@ -1,0 +1,33 @@
+#+TITLE: herramientas para https://static.resultadosconvzla.com/
+#+AUTHOR: Javier Smalldone, Niv Sardi
+
+* files.txt
+  
+Archivo con los URL de las actas en https://static.resultadosconvzla.com/
+
+* count.sh
+
+Script original de contabilizacion de las actas.
+legacy
+
+* count2.sh
+
+Script que lee y contabiliza las actas.
+Recibe como parámetro el directorio que contiene las imágenes de las actas
+y produce el CSV por la salida estándar.
+Cambiando el parámetro de xargs se puede setear la cantidad de procesos
+concurrentes.
+
+* barimg.sh 
+
+Script que realiza la lectura del QR de un acta.
+Requiere zbarimg (https://github.com/mchehab/zbar). 
+
+* wget.sh
+
+wrapper para wget para pasar los headers como dios manda
+evita ser bloqueado por el servidor
+```sh
+sh wget.sh -rc  'https://resultadosconvzla.com/'   
+```
+

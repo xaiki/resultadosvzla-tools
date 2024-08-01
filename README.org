@@ -14,11 +14,6 @@ Archivo con los URL de las actas en https://static.resultadosconvzla.com/
 
 ** count.sh
 
-Script original de contabilizacion de las actas.
-legacy
-
-** count2.sh
-
 Script que lee y contabiliza las actas.
 Recibe como parámetro el directorio que contiene las imágenes de las actas
 y produce el CSV por la salida estándar.
@@ -92,13 +87,13 @@ grep -re 'static' resultadosconvzla.com/mesa/ \
  cd ..
  #+end_src
 
-** Procesar las actas usando el script count2.sh
+** Procesar las actas usando el script count.sh
 
 (Ajustar la cantidad de procesos concurrentes en el parámetro "max-procs" de xargs en count.sh, se recomienda ncpu*4).
 
 #+begin_src sh
 chmod 755 count.sh
-./count2.sh actas > actas.csv
+./count.sh actas > actas.csv
 #+end_src
 
 Esto generará un archivo en formato CSV llamado actas.csv, conteniendo como campos el número de acta y los votos de cada candidato.

@@ -1,16 +1,23 @@
 #+TITLE: herramientas para https://static.resultadosconvzla.com/
 #+AUTHOR: Javier Smalldone, Niv Sardi
 
-* files.txt
+* DISCLAIMER
+Este es un conjunto de herramientas desarrollado en poco tiempo para verificar los resultados de las elecciones presidenciales de 2024 en Venezuela, utilizando las imágenes de las actas publicadas por la oposición al gobierno actual.
+
+Javier Smaldone (https://x.com/mis2centavos)
+Niv Sardi (https://x.com/xaiki)
+
+* documentacion
+** files.txt
   
 Archivo con los URL de las actas en https://static.resultadosconvzla.com/
 
-* count.sh
+** count.sh
 
 Script original de contabilizacion de las actas.
 legacy
 
-* count2.sh
+** count2.sh
 
 Script que lee y contabiliza las actas.
 Recibe como parámetro el directorio que contiene las imágenes de las actas
@@ -18,16 +25,80 @@ y produce el CSV por la salida estándar.
 Cambiando el parámetro de xargs se puede setear la cantidad de procesos
 concurrentes.
 
-* barimg.sh 
+** barimg.sh 
 
 Script que realiza la lectura del QR de un acta.
 Requiere zbarimg (https://github.com/mchehab/zbar). 
 
-* wget.sh
+** wget.sh
 
 wrapper para wget para pasar los headers como dios manda
 evita ser bloqueado por el servidor
-```sh
+#+begin_src sh
 sh wget.sh -rc  'https://resultadosconvzla.com/'   
-```
+#+end_src
 
+* instrucciones
+** pasos opcionales :ACLARACIÓN:
+Los pasos 1) y 2) son opcionales, se puede utilizar la lista de URLs ya incluida en el archivo files.txt. 
+** actas en Google Drive :ACLARACIÓN:
+24.048 actas ya descargadas de resultadosconvzla.com están disponibles en el siguiente Google Drive.
+https://drive.google.com/drive/folders/1I_Ae22mpHUg4xJGz1WTv_F5J8g2zTwqm
+
+
+** Instalar zbar.
+*** Debian/Ubuntu
+#+begin_src sh
+apt install zbar-tools
+#+end_src
+*** MacOS
+#+begin_src sh
+brew install zbar
+#+end_src
+** Descargar las páginas HTML del sitio resultadosconvzla.com
+
+En el directorio que contiene los scripts.
+
+#+begin_src sh
+sh wget.sh \
+       --recursive \
+       --no-clobber \
+       --page-requisites \
+       --html-extension \
+       --restrict-file-names=windows \
+       --domains resultadosconvzla.com \
+       --no-parent \
+       https://resultadosconvzla.com/
+#+end_src
+
+Esto descargará todas las páginas de https://resultadosconvzla.com/ en el directorio resultadosconvzla.com.
+
+se lo puede comparar con https://github.com/xaiki/resultadosconvzla.com
+
+** Extraer la lista de URLs
+
+#+begin_src sh
+grep -re 'static' resultadosconvzla.com/mesa/ \
+       | cut -d\" -f2 | sort -u > files.txt
+#+end_src
+
+** Descargar las actas en formato JPG
+ (12 Gb, aprox.)
+
+ #+begin_src sh
+ mkdir actas
+ cd actas
+ sh wget.sh -i files.txt
+ cd ..
+ #+end_src
+
+** Procesar las actas usando el script count.sh
+
+(Ajustar la cantidad de procesos concurrentes en el parámetro "max-procs" de xargs en count.sh, se recomienda ncpu*4).
+
+#+begin_src sh
+chmod 755 count.sh
+./count.sh actas > actas.csv
+#+end_src
+
+Esto generará un archivo en formato CSV llamado actas.csv, conteniendo como campos el número de acta y los votos de cada candidato.

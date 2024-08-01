@@ -46,10 +46,10 @@ Los pasos 1) y 2) son opcionales, se puede utilizar la lista de URLs ya incluida
 https://drive.google.com/drive/folders/1I_Ae22mpHUg4xJGz1WTv_F5J8g2zTwqm
 
 
-** Instalar zbar.
+** Instalar zbar
 *** Debian/Ubuntu
 #+begin_src sh
-apt install zbar-tools
+sudo apt install zbar-tools
 #+end_src
 *** MacOS
 #+begin_src sh
@@ -88,17 +88,17 @@ grep -re 'static' resultadosconvzla.com/mesa/ \
  #+begin_src sh
  mkdir actas
  cd actas
- sh wget.sh -i files.txt
+ sh wget.sh -i ../files.txt
  cd ..
  #+end_src
 
-** Procesar las actas usando el script count.sh
+** Procesar las actas usando el script count2.sh
 
 (Ajustar la cantidad de procesos concurrentes en el parámetro "max-procs" de xargs en count.sh, se recomienda ncpu*4).
 
 #+begin_src sh
 chmod 755 count.sh
-./count.sh actas > actas.csv
+./count2.sh actas > actas.csv
 #+end_src
 
 Esto generará un archivo en formato CSV llamado actas.csv, conteniendo como campos el número de acta y los votos de cada candidato.

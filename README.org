@@ -1,4 +1,4 @@
-#+TITLE: herramientas para https://static.resultadosconvzla.com/
+#+TITLE: herramientas para https://resultadosconvzla.com/
 #+AUTHOR: Javier Smalldone, Niv Sardi
 
 * DISCLAIMER

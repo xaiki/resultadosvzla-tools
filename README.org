@@ -68,7 +68,7 @@ sh wget.sh \
 
 Esto descargará todas las páginas de https://resultadosconvzla.com/ en el directorio resultadosconvzla.com.
 
-se lo puede comparar con https://github.com/xaiki/resultadosconvzla.com
+se lo puede comparar con https://github.com/xaiki/resultadosvzla.com
 
 ** Extraer la lista de URLs
 

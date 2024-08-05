@@ -30,8 +30,8 @@ def show(img):
     cv2.imshow('show', img)
     cv2.waitKey(0)
 
-def process_img(args):
-    img = cv2.imread(args.filename, cv2.IMREAD_GRAYSCALE)
+def process_img(filename, args):
+    img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 
     if args.threshold:
         img = threshold_white(img)
@@ -59,10 +59,11 @@ def process_img(args):
     return 0
 
 parser = argparse.ArgumentParser()
-parser.add_argument("filename")
+parser.add_argument("filename", nargs="+")
 parser.add_argument('-d', '--debug', action='store_true')
 parser.add_argument('-t', '--threshold', action='store_true')
 
 args = parser.parse_args()
 
-process_img(args)
+for filename in args.filename:
+    process_img(filename, args)

@@ -96,4 +96,4 @@ chmod 755 count.sh
 ./count.sh actas > actas.csv
 #+end_src
 
-Esto generará un archivo en formato CSV llamado actas.csv, conteniendo como campos el número de acta y los votos de cada candidato.
+Esto generará un archivo en formato CSV llamado actas.csv, conteniendo como campos el número de acta y los votos de cada candidato, y creará un directorio llamado failed conteniendo una copia de las actas que no pudieron ser leídas correctamente.

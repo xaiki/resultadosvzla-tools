@@ -3,9 +3,15 @@
 import sys
 import argparse
 import concurrent.futures
+import logging
 
 import cv2
 import numpy as np
+from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
+
+LOG = logging.getLogger(__name__)
+
 def nul_quirk(img):
     return img
 
@@ -48,6 +54,7 @@ def process_img(filename, args):
 
     qcd = cv2.QRCodeDetector()
     for q in args.quirks:
+        LOG.info(f"{filename}: trying QUIRK {q}", file=sys.stderr)
         img = QUIRKS[q](img)
         if args.debug:
             show(img)
@@ -59,26 +66,33 @@ def process_img(filename, args):
     raise ValueError(f"Could not decode {filename}, tried {args.quirks}")
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", nargs="+")
     parser.add_argument('-q', '--quirks', nargs="+", default=QUIRKS)
     parser.add_argument('-d', '--debug', action='store_true')
 
     args = parser.parse_args()
-    class stats: pass
-    stats.success = 0
-    stats.error = 0
+    class stats:
+        success = 0
+        error = 0
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
-        future_to_result = {executor.submit(process_img, filename, args): filename for filename in args.filename}
-        for future in concurrent.futures.as_completed(future_to_result):
-            filename = future_to_result[future]
-            try:
-                result = future.result()
-            except Exception as e:
-                print('%r generated an exception: %s' % (filename, e))
-                stats.error +=1
-            else:
-                print(f"{filename},{result}")
-                stats.success +=1
+
+    with tqdm(total=len(args.filename)) as bar:
+        with logging_redirect_tqdm():
+            with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
+                future_to_result = {executor.submit(process_img, filename, args): filename for filename in args.filename}
+                for future in concurrent.futures.as_completed(future_to_result):
+                    filename = future_to_result[future]
+                    bar.update(1)
+                    try:
+                        result = future.result()
+                    except Exception as e:
+                        LOG.info('%r generated an exception: %s' % (filename, e))
+                        stats.error +=1
+                    else:
+                        tqdm.write(f"{filename},{result}")
+                        stats.success +=1
+                    bar.set_description(f"OK: {stats.success}, E: {stats.error}")
     print("all done", stats)

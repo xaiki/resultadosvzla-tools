@@ -6,6 +6,8 @@ import concurrent.futures
 
 import cv2
 import numpy as np
+def nul_quirk(img):
+    return img
 
 def threshold_white(img):
     lo = np.array([252])
@@ -17,7 +19,17 @@ def threshold_white(img):
     #img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
     return img
 
-QUIRKS = [threshold_white]
+def resize(img):
+    shape = img.shape
+    w, h = int(shape[1]/2), int(shape[0]/2)
+    half = cv2.resize(img, (w, h), interpolation = cv2.INTER_CUBIC)
+    return cv2.resize(img, shape, interpolation = cv2.INTER_CUBIC)
+
+QUIRKS = {
+    'null': nul_quirk,
+    'thresh_white': threshold_white,
+    'resize': resize
+}
 
 def show(img):
     #img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -34,29 +46,23 @@ def show(img):
 def process_img(filename, args):
     img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 
-    if args.threshold:
-        img = threshold_white(img)
-
-    if args.debug:
-        show(img)
-
     qcd = cv2.QRCodeDetector()
-    retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(img)
-    if not retval and not args.threshold:
-        print(f"trying white threshold hack", file=sys.stderr)
-        img = threshold_white(img)
+    for q in args.quirks:
+        img = QUIRKS[q](img)
+        if args.debug:
+            show(img)
+
         retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(img)
+        if retval:
+           return decoded_info[0]
 
-    if args.debug:
-        show(img)
-
-    return decoded_info[0]
+    raise ValueError(f"Could not decode {filename}, tried {args.quirks}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", nargs="+")
+    parser.add_argument('-q', '--quirks', nargs="+", default=QUIRKS)
     parser.add_argument('-d', '--debug', action='store_true')
-    parser.add_argument('-t', '--threshold', action='store_true')
 
     args = parser.parse_args()
     class stats: pass

@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import concurrent.futures
 
 import cv2
 import numpy as np
@@ -49,21 +50,29 @@ def process_img(filename, args):
     if args.debug:
         show(img)
 
-    try:
-        print(decoded_info[0])
+    return decoded_info[0]
 
-    except:
-        print(f"couldn't decode {args.file}", file=sys.stderr)
-        return 1
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("filename", nargs="+")
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-t', '--threshold', action='store_true')
 
-    return 0
+    args = parser.parse_args()
+    class stats: pass
+    stats.success = 0
+    stats.error = 0
 
-parser = argparse.ArgumentParser()
-parser.add_argument("filename", nargs="+")
-parser.add_argument('-d', '--debug', action='store_true')
-parser.add_argument('-t', '--threshold', action='store_true')
-
-args = parser.parse_args()
-
-for filename in args.filename:
-    process_img(filename, args)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
+        future_to_result = {executor.submit(process_img, filename, args): filename for filename in args.filename}
+        for future in concurrent.futures.as_completed(future_to_result):
+            filename = future_to_result[future]
+            try:
+                result = future.result()
+            except Exception as e:
+                print('%r generated an exception: %s' % (filename, e))
+                stats.error +=1
+            else:
+                print(f"{filename},{result}")
+                stats.success +=1
+    print("all done", stats)

@@ -15,27 +15,51 @@ LOG = logging.getLogger(__name__)
 def nul_quirk(img):
     return img
 
+def to_gray(img):
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+def threshold_adaptive(img):
+    return cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+
+def threshold_binary(img):
+    ret, img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
+    return img
+
 def threshold_white(img):
-    lo = np.array([252])
+    if len(img.shape) > 2 and img.shape[2] > 1:
+       img = to_gray(img)
+
+    lo = np.array([254])
     hi = np.array([255])
 
     mask = cv2.inRange(img, lo, hi)
     img[mask>0] = (0)
-    #ret, img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
-    #img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
-    return img
 
-def resize(img):
+    #img =
+    return threshold_binary(img)
+
+def resize(img, rate=2):
     shape = img.shape
-    w, h = int(shape[1]/2), int(shape[0]/2)
-    half = cv2.resize(img, (w, h), interpolation = cv2.INTER_CUBIC)
-    return cv2.resize(img, shape, interpolation = cv2.INTER_CUBIC)
+    half = cv2.resize(img, None, fx=1/rate, fy=1/rate, interpolation = cv2.INTER_CUBIC)
+    return cv2.resize(half, None, fx=rate, fy=rate, interpolation = cv2.INTER_CUBIC)
+
+def quirk_crop(img):
+    h = img.shape[0]
+    w = img.shape[1]
+    c = img[h-w:h,0:w]
+    return c
 
 QUIRKS = {
-    'null': nul_quirk,
+    'none': nul_quirk,
+    'thresh_adaptive': threshold_adaptive,
+    'thresh_binary': threshold_binary,
+    'gray': to_gray,
+    'crop': quirk_crop,
     'thresh_white': threshold_white,
-    'resize': resize
+    'resize': resize,
 }
+
+DEFAULT_QUIRKS = ['none', 'gray', 'thresh_white', 'resize', 'thresh_binary', 'crop']
 
 def show(img):
     #img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -70,7 +94,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", nargs="+")
-    parser.add_argument('-q', '--quirks', nargs="+", default=QUIRKS)
+    parser.add_argument('-v', '--verbose', action="count", default=0)
+    parser.add_argument('-q', '--quirks', nargs="+", default=DEFAULT_QUIRKS)
+    parser.add_argument('-D', '--decoders', nargs="+", default=DECODERS)
     parser.add_argument('-d', '--debug', action='store_true')
 
     args = parser.parse_args()

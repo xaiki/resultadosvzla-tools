@@ -135,7 +135,13 @@ def sumi(s):
     return sum([int(i) for i in s])
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    LOG_LEVELS = [
+        logging.CRITICAL,
+        logging.ERROR,
+        logging.WARNING,
+        logging.INFO,
+        logging.DEBUG,
+    ]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", nargs="+")
@@ -149,6 +155,8 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--non-destructive', action='store_true')
 
     args = parser.parse_args()
+
+    logging.basicConfig(level=LOG_LEVELS[min(len(LOG_LEVELS) - 1, args.verbose)])
     class stats:
         success = 0
         error = 0

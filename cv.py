@@ -69,8 +69,7 @@ def threshold_white(img, dist=1):
     mask = cv2.inRange(img, lo, hi)
     img[mask>0] = (0)
 
-    #img =
-    return threshold_binary(img)
+    return img
 
 def resize(img, rate=2):
     shape = img.shape

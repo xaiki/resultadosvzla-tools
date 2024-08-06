@@ -159,11 +159,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", nargs="*")
     parser.add_argument('-v', '--verbose', action="count", default=0)
+    parser.add_argument('-f', '--force', action="store_true")
     parser.add_argument('-q', '--quirks', nargs="+", default=DEFAULT_QUIRKS)
     parser.add_argument('-D', '--decoders', nargs="+", default=DECODERS)
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-c', '--csv', default="../decoded.csv")
-    parser.add_argument('-f', '--failed-csv', default="../failed.csv")
+    parser.add_argument('-F', '--failed-csv', default="../failed.csv")
     parser.add_argument('-P', '--max-procs', default=32, type=int)
     parser.add_argument('-n', '--non-destructive', action='store_true')
 
@@ -185,10 +186,13 @@ if __name__ == '__main__':
     to_process = []
     solved = df.to_records()['Archivo']
 
-    tqdm.write("trimming solved files")
-    for fn in tqdm(args.filename):
-        if not fn in solved:
-            to_process.append(fn)
+    if args.force:
+        to_process = args.filename
+    else:
+        tqdm.write("trimming solved files")
+        for fn in tqdm(args.filename):
+            if not fn in solved:
+                to_process.append(fn)
     skipped = len(args.filename) - len(to_process)
 
     with tqdm(total=len(to_process)) as bar:

@@ -6,11 +6,37 @@ import concurrent.futures
 import logging
 
 import cv2
+from pyzbar.pyzbar import decode, ZBarSymbol
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 LOG = logging.getLogger(__name__)
+COLUMNS = ["Archivo","Acta","Nulos","Vacios","Maduro","Martinez","Bertucci","Brito","Ecarri","Fermin","Ceballos","Gonzalez","Marquez","Rausseo"]
+
+def load_csv(fn, columns=COLUMNS):
+    try:
+        df = pd.read_csv(fn)
+    except Exception as e:
+        df = pd.DataFrame(columns=columns)
+    return df
+
+
+qcd = cv2.QRCodeDetector()
+def decode_cv2(img):
+    retval, result, points, straight_qrcode = qcd.detectAndDecodeMulti(img)
+    return result[0]
+
+def decode_zbar(img):
+    barcodes = decode(img, symbols=[ZBarSymbol.QRCODE])
+    LOG.warning(barcodes)
+    return  barcodes[0].data.decode('utf-8')
+
+DECODERS = {
+    'zbar': decode_zbar,
+    'cv2': decode_cv2,
+}
 
 def nul_quirk(img):
     return img
@@ -74,20 +100,39 @@ def show(img):
     cv2.waitKey(0)
 
 def process_img(filename, args):
-    img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread(filename)
+    quirks = {}
 
-    qcd = cv2.QRCodeDetector()
-    for q in args.quirks:
-        LOG.info(f"{filename}: trying QUIRK {q}", file=sys.stderr)
-        img = QUIRKS[q](img)
-        if args.debug:
-            show(img)
+    for d in args.decoders:
+        img_cache = img
+        for q in args.quirks:
+            LOG.warning(f"{filename}: trying DECODER {d}, QUIRK {q}")
+            proc_img = QUIRKS[q](img)
+            if args.non_destructive == True:
+                LOG.debug("non destructive mode")
+            else:
+                img = proc_img
 
-        retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(img)
-        if retval:
-           return decoded_info[0]
 
-    raise ValueError(f"Could not decode {filename}, tried {args.quirks}")
+            if args.debug:
+                show(proc_img)
+
+            result = None
+            try:
+                result = DECODERS[d](img)
+                a, r, n, v = result.split('!')
+                r = r.split(',')
+                return([a[:9], int(n), int(v), sumi(r[0:12]), sumi(r[13:18]), int(r[19]), sumi(r[20:23]), sumi(r[24:29]), int(r[30]), sumi(r[31:32]), sumi(r[33:35]), int(r[36]), int(r[37])])
+
+            except Exception as e:
+                LOG.warning(f"{filename}, decoder {d}, quirk {q} failed with {(result, e)}")
+                quirks[q] = (result, e)
+        img = img_cache
+
+    raise ValueError(f"Could not decode {filename}, tried {quirks}")
+
+def sumi(s):
+    return sum([int(i) for i in s])
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -98,27 +143,52 @@ if __name__ == '__main__':
     parser.add_argument('-q', '--quirks', nargs="+", default=DEFAULT_QUIRKS)
     parser.add_argument('-D', '--decoders', nargs="+", default=DECODERS)
     parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-c', '--csv', default="../decoded.csv")
+    parser.add_argument('-f', '--failed-csv', default="../failed.csv")
+    parser.add_argument('-P', '--max-procs', default=32, type=int)
+    parser.add_argument('-n', '--non-destructive', action='store_true')
 
     args = parser.parse_args()
     class stats:
         success = 0
         error = 0
 
+    df = load_csv(args.csv)
+    fdf = load_csv(args.failed_csv, columns=['Archivo'])
 
-    with tqdm(total=len(args.filename)) as bar:
+    to_process = []
+    tqdm.write("trimming solved files")
+    for fn in tqdm(args.filename):
+        if df.loc[df['Archivo'] == fn].empty:
+            to_process.append(fn)
+    skipped = len(args.filename) - len(to_process)
+
+    with tqdm(total=len(to_process)) as bar:
         with logging_redirect_tqdm():
-            with concurrent.futures.ProcessPoolExecutor(max_workers=32) as executor:
-                future_to_result = {executor.submit(process_img, filename, args): filename for filename in args.filename}
+            with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_procs) as executor:
+                future_to_result = {
+                    executor.submit(process_img, filename, args) : filename for filename in to_process}
                 for future in concurrent.futures.as_completed(future_to_result):
                     filename = future_to_result[future]
-                    bar.update(1)
+
                     try:
                         result = future.result()
                     except Exception as e:
                         LOG.info('%r generated an exception: %s' % (filename, e))
+                        if fdf.loc[fdf['Archivo'] == filename].empty:
+                            fdf.loc[len(fdf)] = [filename]
+                            fdf.to_csv(args.failed_csv, index = False)
                         stats.error +=1
                     else:
-                        tqdm.write(f"{filename},{result}")
+                        row = [filename] + result
+                        df.loc[len(df)] = row
+                        #df.to_csv(args.csv, index = False)
+                        df.to_csv(args.csv, index = False)
                         stats.success +=1
-                    bar.set_description(f"OK: {stats.success}, E: {stats.error}")
-    print("all done", stats)
+
+                    bar.update(1)
+                    bar.set_description(f"OK: {stats.success + skipped}, N: {stats.success}, S: {skipped}, E: {stats.error}")
+
+
+    print("all done")
+    df.to_csv(args.csv, index = False)

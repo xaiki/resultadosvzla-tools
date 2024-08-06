@@ -47,8 +47,16 @@ def to_gray(img):
 def threshold_adaptive(img):
     return cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
 
-def threshold_binary(img):
-    ret, img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
+def threshold_binary(img, args=""):
+    args = args.split(',')
+    dist, max = 55, 255
+    try:
+       dist = args[0]
+       max = args[1]
+    except:
+       pass
+
+    ret, img = cv2.threshold(img, 255 - int(dist), 255, cv2.THRESH_BINARY)
     return img
 
 def threshold_white(img, dist=1):
@@ -117,9 +125,11 @@ def process_img(filename, args):
 
             try:
                 proc_img = None
-                print(q, a)
                 if a != None:
-                    proc_img = QUIRKS[q](img, float(a))
+                    try:
+                       proc_img = QUIRKS[q](img, float(a))
+                    except:
+                       proc_img = QUIRKS[q](img, a)
                 else:
                     proc_img = QUIRKS[q](img)
 

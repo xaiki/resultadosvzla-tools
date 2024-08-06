@@ -169,6 +169,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.debug:
+        concurrent_executor = concurrent.futures.ProcessPoolExecutor
+    else:
+        concurrent_executor = concurrent.futures.ThreadPoolExecutor
+
     logging.basicConfig(level=LOG_LEVELS[min(len(LOG_LEVELS) - 1, args.verbose)])
     class stats:
         success = 0
@@ -188,7 +193,7 @@ if __name__ == '__main__':
 
     with tqdm(total=len(to_process)) as bar:
         with logging_redirect_tqdm():
-            with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_procs) as executor:
+            with concurrent_executor(max_workers=args.max_procs) as executor:
                 future_to_result = {
                     executor.submit(process_img, filename, args) : filename for filename in to_process}
                 for future in concurrent.futures.as_completed(future_to_result):

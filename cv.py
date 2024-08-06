@@ -51,11 +51,11 @@ def threshold_binary(img):
     ret, img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)
     return img
 
-def threshold_white(img):
+def threshold_white(img, dist=1):
     if len(img.shape) > 2 and img.shape[2] > 1:
        img = to_gray(img)
 
-    lo = np.array([254])
+    lo = np.array([255 - int(dist)])
     hi = np.array([255])
 
     mask = cv2.inRange(img, lo, hi)
@@ -72,7 +72,7 @@ def resize(img, rate=2):
 def quirk_crop(img):
     h = img.shape[0]
     w = img.shape[1]
-    c = img[h-w:h,0:w]
+    c = img[h-int(w*1.1):h,0:w]
     return c
 
 QUIRKS = {
@@ -105,20 +105,33 @@ def process_img(filename, args):
 
     for d in args.decoders:
         img_cache = img
-        for q in args.quirks:
-            LOG.warning(f"{filename}: trying DECODER {d}, QUIRK {q}")
-            proc_img = QUIRKS[q](img)
-            if args.non_destructive == True:
-                LOG.debug("non destructive mode")
+        for quirk in args.quirks:
+            LOG.warning(f"{filename}: trying DECODER {d}, QUIRK {quirk}")
+            q, a = None, None
+            if quirk.count(':') == 1:
+                q, a = quirk.split(':')
             else:
-                img = proc_img
-
-
-            if args.debug:
-                show(proc_img)
+                q = quirk
 
             result = None
+
             try:
+                proc_img = None
+                print(q, a)
+                if a != None:
+                    proc_img = QUIRKS[q](img, float(a))
+                else:
+                    proc_img = QUIRKS[q](img)
+
+                if args.non_destructive == True:
+                    LOG.debug("non destructive mode")
+                else:
+                    img = proc_img
+
+
+                if args.debug:
+                    show(proc_img)
+
                 result = DECODERS[d](img)
                 a, r, n, v = result.split('!')
                 r = r.split(',')
@@ -144,7 +157,7 @@ if __name__ == '__main__':
     ]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("filename", nargs="+")
+    parser.add_argument("filename", nargs="*")
     parser.add_argument('-v', '--verbose', action="count", default=0)
     parser.add_argument('-q', '--quirks', nargs="+", default=DEFAULT_QUIRKS)
     parser.add_argument('-D', '--decoders', nargs="+", default=DECODERS)

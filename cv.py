@@ -165,9 +165,11 @@ if __name__ == '__main__':
     fdf = load_csv(args.failed_csv, columns=['Archivo'])
 
     to_process = []
+    solved = df.to_records()['Archivo']
+
     tqdm.write("trimming solved files")
     for fn in tqdm(args.filename):
-        if df.loc[df['Archivo'] == fn].empty:
+        if not fn in solved:
             to_process.append(fn)
     skipped = len(args.filename) - len(to_process)
 

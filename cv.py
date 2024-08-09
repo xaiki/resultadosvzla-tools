@@ -195,8 +195,8 @@ if __name__ == '__main__':
     parser.add_argument('-q', '--quirks', nargs="+", default=DEFAULT_QUIRKS)
     parser.add_argument('-D', '--decoders', nargs="+", default=DECODERS)
     parser.add_argument('-d', '--debug', action='store_true')
-    parser.add_argument('-c', '--csv', default="../decoded.csv")
-    parser.add_argument('-F', '--failed-csv', default="../failed.csv")
+    parser.add_argument('-c', '--csv', default="./decoded.csv")
+    parser.add_argument('-F', '--failed-csv', default="./failed.csv")
     parser.add_argument('-P', '--max-procs', default=32, type=int)
     parser.add_argument('-n', '--non-destructive', action='store_true')
 

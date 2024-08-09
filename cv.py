@@ -108,6 +108,9 @@ def show(img):
 
 def process_img(filename, args):
     img = cv2.imread(filename)
+    if not isinstance(img, np.ndarray):
+        raise FileNotFoundError(f"file not found: {filename}")
+
     quirks = {}
 
     for d in args.decoders:

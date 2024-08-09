@@ -250,8 +250,11 @@ if __name__ == '__main__':
                         stats.error +=1
                     else:
                         row = [filename] + result
-                        df.loc[len(df)] = row
-                        #df.to_csv(args.csv, index = False)
+                        if df.loc[(df['Acta'] == int(result[0]))].empty:
+                            df.loc[len(df)] = row
+                        else:
+                            df.loc[(df['Acta'] == result[0])] = row
+
                         df.to_csv(args.csv, index = False)
                         stats.success +=1
 

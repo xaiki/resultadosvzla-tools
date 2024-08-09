@@ -47,8 +47,7 @@ def to_gray(img):
 def threshold_adaptive(img):
     return cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
 
-def threshold_binary(img, args=""):
-    args = args.split(',')
+def threshold_binary(img, args=[55, 255]):
     dist, max = 55, 255
     try:
        dist = args[0]
@@ -118,9 +117,13 @@ def process_img(filename, args):
         for quirk in args.quirks:
             LOG.debug(f"{filename}: trying DECODER {d}, QUIRK {quirk}")
             q, a = None, None
-            if quirk.count(':') == 1:
+            try:
                 q, a = quirk.split(':')
-            else:
+                try:
+                    a = [float(v) for v in a.split(',')]
+                except:
+                    pass
+            except Exception:
                 q = quirk
 
             result = None

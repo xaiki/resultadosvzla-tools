@@ -169,7 +169,7 @@ def process_img(filename, args):
 
             except Exception as e:
                 LOG.warning(f"{filename}, decoder {d}, quirk {q} failed with {(result, e)}")
-                quirks[q] = (result, e)
+                quirks[f"{d}:{q}"] = (result, e)
         img = img_cache
 
     raise ValueError(f"Could not decode {filename}, tried {quirks}")

@@ -4,6 +4,7 @@ import sys
 import argparse
 import concurrent.futures
 import logging
+import os
 
 import cv2
 from pyzbar.pyzbar import decode, ZBarSymbol
@@ -215,6 +216,9 @@ if __name__ == '__main__':
 
     to_process = []
     solved = df.to_records()['Archivo']
+
+    if os.path.isdir(args.filename[0]):
+        args.filename = [os.path.join(args.filename[0], f) for f in os.listdir(args.filename[0])]
 
     if args.force:
         to_process = args.filename

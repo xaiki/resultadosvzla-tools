@@ -116,7 +116,7 @@ def process_img(filename, args):
     for d in args.decoders:
         img_cache = img
         for quirk in args.quirks:
-            LOG.warning(f"{filename}: trying DECODER {d}, QUIRK {quirk}")
+            LOG.debug(f"{filename}: trying DECODER {d}, QUIRK {quirk}")
             q, a = None, None
             if quirk.count(':') == 1:
                 q, a = quirk.split(':')

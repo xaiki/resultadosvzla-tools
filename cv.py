@@ -14,6 +14,19 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 LOG = logging.getLogger(__name__)
 COLUMNS = ["Archivo","Acta","Nulos","Vacios","Maduro","Martinez","Bertucci","Brito","Ecarri","Fermin","Ceballos","Gonzalez","Marquez","Rausseo"]
+CANDIDATES = {
+    "Maduro": ['PSUV', 'PCV', 'TUPAMARO', 'PPT', 'MSV', 'PODEMOS', 'MEP', 'APC', 'ORA', 'UPV', 'EV', 'PVV', 'PFV'],
+    "Martinez": ['AD', 'COPEI', 'MR', 'BR', 'DDP', 'UNE'],
+    "Bertucci": ['EL CAMBIO'],
+    "Brito": ['PV', 'VU', 'UVV', 'MPJ'],
+    "Ecarri": ['AP', 'MOVEV', 'CMC', 'FV', 'ALIANZA DEL LAPIZ', 'MIN UNIDAD'],
+    "Fermin": ['SPV'],
+    "Ceballos": ['VPA', 'AREPA'],
+    "Gonzalez": ['UNTC', 'MPV', 'MUD'],
+    "Marquez": ['CENTRADOS'],
+    "Rausseo": ['CONDE']
+}
+PARTIES = [p for c in CANDIDATES for p in CANDIDATES[c]]
 
 def load_csv(fn, columns=COLUMNS):
     try:
@@ -150,7 +163,9 @@ def process_img(filename, args):
                 result = DECODERS[d](img)
                 a, r, n, v = result.split('!')
                 r = r.split(',')
-                return([a[:9], int(n), int(v), sumi(r[0:12]), sumi(r[13:18]), int(r[19]), sumi(r[20:23]), sumi(r[24:29]), int(r[30]), sumi(r[31:32]), sumi(r[33:35]), int(r[36]), int(r[37])])
+                votes = {p: int(v) for p, v in zip(PARTIES, r)}
+                votes = {c: sum([votes[p] for p in CANDIDATES[c]]) for c in CANDIDATES}
+                return([a[:9], int(n), int(v)] + [votes[v] for v in votes])
 
             except Exception as e:
                 LOG.warning(f"{filename}, decoder {d}, quirk {q} failed with {(result, e)}")

@@ -5,6 +5,7 @@ import argparse
 import concurrent.futures
 import logging
 import os
+import traceback
 
 import cv2
 from pyzbar.pyzbar import decode, ZBarSymbol
@@ -240,6 +241,8 @@ if __name__ == '__main__':
                     try:
                         result = future.result()
                     except Exception as e:
+                        traceback.print_exception(e)
+
                         LOG.info('%r generated an exception: %s' % (filename, e))
                         if fdf.loc[fdf['Archivo'] == filename].empty:
                             fdf.loc[len(fdf)] = [filename]

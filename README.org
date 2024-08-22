@@ -41,6 +41,46 @@ Recibe como parámetro una lista de archivos y por la salida estándar arroja el
 El script recibe las actas descargadas, calcula el MD5 hash, y luego busca el hash de esa acta en el servidor https://static.resultadosconvzla.com con el mismo nombre de archivo.
 No se descargan las actas del servidor, ya que el servidor ofrece el MD5 hash directamente en el header "etag" de la respuesta HTTP
 
+** cv.py
+Re-implementacion en Python de todo lo anterior, internamente usa zbar y opencv para intentar leer actas sacando sus resultados en 3 archivos:
+ - =decoded.csv=: actas leidas correctamente
+ - =failed.csv=: actas que no pudieron ser leidas
+ - =duplicates.csv=: actas duplicadas (numeros de actas duplicados)
+
+el programa es reentrante, lo que significa que si lo corre varias veces no volvera a intentar leer las actas ya procesadas (=decoded= y =duplicates=), al menos que le pase el flag =-f=.
+
+el programa intenta varios 'trucos' para mejorar las chances de leer las imagenes, se pueden personalizar en la linea de comando con el flag =-q= o =--quirks=, la lista de trucos es:
+ - =none=: no hace nada
+ - =thresh_adaptive=: aplica un limite adaptativo
+ - =thresh_binary=: aplica un limite binario
+ - =gray=: convierte la imagen a tonos de gris
+ - =crop=: corta la imagen
+ - =thresh_white=: convierte los puntos mas blancos de la imagen a negro
+ - =resize=: redimenciona la imagen
+
+para mas informacion corra:
+#+begin_src sh
+$ python3 cv.py -h
+usage: cv.py [-h] [-v] [-f] [-q QUIRKS [QUIRKS ...]] [-D DECODERS [DECODERS ...]] [-d] [-c CSV] [-F FAILED_CSV]
+             [-2 DUPLICATES_CSV] [-P MAX_PROCS] [-n]
+             [filename ...]
+
+positional arguments:
+  filename
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose
+  -f, --force
+  -q QUIRKS [QUIRKS ...], --quirks QUIRKS [QUIRKS ...]
+  -D DECODERS [DECODERS ...], --decoders DECODERS [DECODERS ...]
+  -d, --debug
+  -c CSV, --csv CSV
+  -F FAILED_CSV, --failed-csv FAILED_CSV
+  -2 DUPLICATES_CSV, --duplicates-csv DUPLICATES_CSV
+  -P MAX_PROCS, --max-procs MAX_PROCS
+  -n, --non-destructive
+#+end_src
 * instrucciones
 ** pasos opcionales :ACLARACIÓN:
 Los pasos 1) y 2) son opcionales, se puede utilizar la lista de URLs ya incluida en el archivo files.txt. 

@@ -13,6 +13,15 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
+from decoratorOperations import throttle
+
+LOG_LEVELS = [
+    logging.CRITICAL,
+    logging.ERROR,
+    logging.WARNING,
+    logging.INFO,
+    logging.DEBUG,
+]
 
 LOG = logging.getLogger(__name__)
 COLUMNS = ["Archivo","Acta","Nulos","Vacios","Maduro","Martinez","Bertucci","Brito","Ecarri","Fermin","Ceballos","Gonzalez","Marquez","Rausseo"]
@@ -73,7 +82,8 @@ def threshold_binary(img, args=[55, 255]):
     ret, img = cv2.threshold(img, 255 - int(dist), 255, cv2.THRESH_BINARY)
     return img
 
-def threshold_white(img, dist=1):
+def threshold_white(img, args=[1]):
+    dist, = args
     if len(img.shape) > 2 and img.shape[2] > 1:
        img = to_gray(img)
 
@@ -85,15 +95,18 @@ def threshold_white(img, dist=1):
 
     return img
 
-def resize(img, rate=2):
+def resize(img, args=[2]):
+    rate, = args
     shape = img.shape
     half = cv2.resize(img, None, fx=1/rate, fy=1/rate, interpolation = cv2.INTER_CUBIC)
-    return cv2.resize(half, None, fx=rate, fy=rate, interpolation = cv2.INTER_CUBIC)
+    img = cv2.resize(half, None, fx=rate, fy=rate, interpolation = cv2.INTER_CUBIC)
+    return half
 
 def quirk_crop(img):
     h = img.shape[0]
     w = img.shape[1]
     c = img[h-int(w*1.1):h,0:w]
+
     return c
 
 QUIRKS = {
@@ -121,6 +134,8 @@ def show(img):
     cv2.waitKey(0)
 
 def process_img(filename, args):
+    logging.basicConfig(level=LOG_LEVELS[min(len(LOG_LEVELS) - 1, args.verbose)])
+
     img = cv2.imread(filename)
     if not isinstance(img, np.ndarray):
         raise FileNotFoundError(f"file not found: {filename}")
@@ -167,27 +182,26 @@ def process_img(filename, args):
                 r = r.split(',')
                 votes = {p: int(v) for p, v in zip(PARTIES, r)}
                 votes = {c: sum([votes[p] for p in CANDIDATES[c]]) for c in CANDIDATES}
-                return([a[:9], int(n), int(v)] + [votes[v] for v in votes])
+                LOG.warning(votes)
+
+                del img
+                del img_cache
+                del proc_img
+                return([a, int(n), int(v)] + [votes[v] for v in votes])
 
             except Exception as e:
                 LOG.warning(f"{filename}, decoder {d}, quirk {q} failed with {(result, e)}")
                 quirks[f"{d}:{q}"] = (result, e)
         img = img_cache
 
+    del img
+    del img_cache
     raise ValueError(f"Could not decode {filename}, tried {quirks}")
 
 def sumi(s):
     return sum([int(i) for i in s])
 
 if __name__ == '__main__':
-    LOG_LEVELS = [
-        logging.CRITICAL,
-        logging.ERROR,
-        logging.WARNING,
-        logging.INFO,
-        logging.DEBUG,
-    ]
-
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", nargs="*")
     parser.add_argument('-v', '--verbose', action="count", default=0)
@@ -197,6 +211,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-c', '--csv', default="./decoded.csv")
     parser.add_argument('-F', '--failed-csv', default="./failed.csv")
+    parser.add_argument('-2', '--duplicates-csv', default="./duplicate.csv")
     parser.add_argument('-P', '--max-procs', default=32, type=int)
     parser.add_argument('-n', '--non-destructive', action='store_true')
 
@@ -205,7 +220,7 @@ if __name__ == '__main__':
     if args.debug:
         concurrent_executor = concurrent.futures.ProcessPoolExecutor
     else:
-        concurrent_executor = concurrent.futures.ThreadPoolExecutor
+        concurrent_executor = concurrent.futures.ProcessPoolExecutor
 
     logging.basicConfig(level=LOG_LEVELS[min(len(LOG_LEVELS) - 1, args.verbose)])
     class stats:
@@ -214,9 +229,23 @@ if __name__ == '__main__':
 
     df = load_csv(args.csv)
     fdf = load_csv(args.failed_csv, columns=['Archivo'])
+    ddf = load_csv(args.duplicates_csv)
+
+    @throttle(2)
+    def write_df():
+        df.to_csv(args.csv, index = False)
+
+    @throttle(2)
+    def write_fdf():
+        fdf.to_csv(args.failed_csv, index = False)
+
+    @throttle(2)
+    def write_ddf():
+        ddf.to_csv(args.duplicates_csv, index = False)
 
     to_process = []
     solved = df.to_records()['Archivo']
+    dups = ddf.to_records()['Archivo']
 
     if os.path.isdir(args.filename[0]):
         args.filename = [os.path.join(args.filename[0], f) for f in os.listdir(args.filename[0])]
@@ -226,7 +255,7 @@ if __name__ == '__main__':
     else:
         tqdm.write("trimming solved files")
         for fn in tqdm(args.filename):
-            if not fn in solved:
+            if not fn in solved and not fn in dups:
                 to_process.append(fn)
     skipped = len(args.filename) - len(to_process)
 
@@ -246,16 +275,24 @@ if __name__ == '__main__':
                         LOG.info('%r generated an exception: %s' % (filename, e))
                         if fdf.loc[fdf['Archivo'] == filename].empty:
                             fdf.loc[len(fdf)] = [filename]
-                            fdf.to_csv(args.failed_csv, index = False)
+                            write_fdf()
                         stats.error +=1
                     else:
                         row = [filename] + result
-                        if df.loc[(df['Acta'] == int(result[0]))].empty:
-                            df.loc[len(df)] = row
-                        else:
-                            df.loc[(df['Acta'] == result[0])] = row
+                        acta = result[0]
+                        try:
+                            if df.loc[(df['Acta'] == acta)].empty:
+                                df.loc[len(df)] = row
+                            else:
+                                ddf = pd.concat([ddf, df.loc[(df['Acta'] == acta)]])
+                                ddf.loc[len(ddf)] = row
 
-                        df.to_csv(args.csv, index = False)
+                                df.loc[(df['Acta'] == result[0])] = row
+                                write_ddf()
+                        except Exception as e:
+                            traceback.print_exception(e)
+
+                        write_df()
                         stats.success +=1
 
                     bar.update(1)

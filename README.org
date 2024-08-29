@@ -36,10 +36,15 @@ sh wget.sh -rc  'https://resultadosconvzla.com/'
 ** md5check.sh
 
 Script que comprueba la integridad de las actas descargadas con las actas alojadas en https://static.resultadosconvzla.com.
-Recibe como parámetro una lista de archivos y por la salida estándar arroja el resultado de md5sum --check
+Recibe como parámetro la lista de actas y por la salida estándar arroja el resultado de md5sum --check
 
-El script recibe las actas descargadas, calcula el MD5 hash, y luego busca el hash de esa acta en el servidor https://static.resultadosconvzla.com con el mismo nombre de archivo.
-No se descargan las actas del servidor, ya que el servidor ofrece el MD5 hash directamente en el header "etag" de la respuesta HTTP
+El script calcula el MD5 hash de cada acta y lo compara con el hash que arroja el servidor https://static.resultadosconvzla.com en el encabezado "etag" sin necesidad de volver a descargar el acta.
+
+Si arroja el error "argument line too long", se puede solucionar corriendo el script dentro de "find" de la siguiente manera:
+
+#+begin_src sh
+find . -type f -name '*.jpg' -exec sh md5check.sh {} \; > md5check.txt
+#+end_src
 
 ** cv.py
 Re-implementacion en Python de todo lo anterior, internamente usa zbar y opencv para intentar leer actas sacando sus resultados en 3 archivos:
@@ -150,7 +155,7 @@ Esto generará un archivo en formato CSV llamado actas.csv, conteniendo como cam
 
 #+begin_src sh
 cd actas
-sh md5check.sh *.jpg > md5check.txt
+sh md5check.sh **/*.jpg > md5check.txt
 #+end_src
 
 Esto generará un archivo de texto plano conteniendo el resultado que arroja md5sum --check para cada acta. Para filtrar las actas que no lograron pasar la verificación, se puede ejecutar:
